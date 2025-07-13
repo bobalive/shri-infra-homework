@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      REGISTRY: cr.yandex/<идентификатор_реестра>
+      REGISTRY: cr.yandex/crpadim3u20qi0o2f7jd
       APP_NAME: app
 
     steps:
@@ -97,7 +97,7 @@ jobs:
           script: |
             const issue_number = Number("${{ github.event.inputs.issue_number }}");
             const tag = "${{ github.event.inputs.release_version }}_fix${{ steps.prevtag.outputs.fix_count }}";
-            const image_url = "cr.yandex/<идентификатор_реестра>/app:" + tag;
+            const image_url = "cr.yandex/crpadim3u20qi0o2f7jd/app:" + tag;
             const date = new Date().toISOString().split('T')[0];
             const actor = "${{ github.actor }}";
             const commits = `\`\`\`\n${{ steps.commits.outputs.commits }}\n\`\`\``;
