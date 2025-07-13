@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
 
 env:
-  REGISTRY: cr.yandex/<идентификатор_реестра>
+  REGISTRY: cr.yandex/crpadim3u20qi0o2f7jd
   IMAGE_NAME: app
   VERSION: ${{ github.run_number }}
 
