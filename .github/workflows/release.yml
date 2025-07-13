@@ -97,14 +97,15 @@ jobs:
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
           git pull
+          git checkout work-flow
           git add CHANGELOG.md
           git commit -m "chore: update changelog for v${{ env.VERSION }}"
-          git push origin $BRANCH
+          git push origin work-flow
 
           gh pr create --title "chore: update changelog for v${{ env.VERSION }}" \
                       --body "This PR updates the changelog for version v${{ env.VERSION }}" \
                       --base main \
-                      --head $BRANCH
+                      --head work-flow
 
           gh pr review --approve
           gh pr merge --auto --merge
