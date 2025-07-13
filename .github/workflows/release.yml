@@ -95,9 +95,10 @@ jobs:
           mv CHANGELOG.md.new CHANGELOG.md
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
+          git pull
           git add CHANGELOG.md
           git commit -m "chore: update changelog for v${{ env.VERSION }}"
-          git push origin HEAD:main
+          git push origin HEAD:main --force
 
       - name: Create GitHub Issue
         uses: peter-evans/create-issue-from-file@v5
