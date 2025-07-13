@@ -7,6 +7,7 @@ env:
   REGISTRY: cr.yandex/crpadim3u20qi0o2f7jd
   IMAGE_NAME: app
   VERSION: ${{ github.run_number }}
+  GH_TOKEN: ${{ github.token }}
 
 jobs:
   checks:
