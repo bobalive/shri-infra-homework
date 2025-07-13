@@ -83,7 +83,8 @@ jobs:
           echo "commits<<EOF" >> $GITHUB_ENV
           echo "$COMMITS" >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
-
+      - name: Install GitHub CLI
+        run: sudo apt-get install -y gh
       - name: Update CHANGELOG.md
         run: |
           {
@@ -98,7 +99,15 @@ jobs:
           git pull
           git add CHANGELOG.md
           git commit -m "chore: update changelog for v${{ env.VERSION }}"
-          git push origin HEAD:main --force
+          git push origin $BRANCH
+
+          gh pr create --title "chore: update changelog for v${{ env.VERSION }}" \
+                      --body "This PR updates the changelog for version v${{ env.VERSION }}" \
+                      --base main \
+                      --head $BRANCH
+
+          gh pr review --approve
+          gh pr merge --auto --merge
 
       - name: Create GitHub Issue
         uses: peter-evans/create-issue-from-file@v5
