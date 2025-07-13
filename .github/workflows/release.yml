@@ -7,7 +7,6 @@ env:
   REGISTRY: cr.yandex/crpadim3u20qi0o2f7jd
   IMAGE_NAME: app
   VERSION: ${{ github.run_number }}
-  GH_TOKEN: ${{ github.token }}
 
 jobs:
   checks:
@@ -84,43 +83,29 @@ jobs:
           echo "commits<<EOF" >> $GITHUB_ENV
           echo "$COMMITS" >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
-      - name: Install GitHub CLI
-        run: sudo apt-get install -y gh
-      - name: Update and push changelog
-        env:
-          CHANGELOG_TEXT: |
-            # CHANGELOG
 
-            ## Version ${{ github.run_number }}
-
-            Commit list from previous release/fix-release tag:
-
-            ${{ steps.commits.outputs.commits }}
+      - name: Update CHANGELOG.md
         run: |
-          changelog="CHANGELOG.md"
-          temp_file="temp.txt"
-          tail -n +2 "$changelog" > "$temp_file"
-          echo "${{ env.CHANGELOG_TEXT }}" | cat - "$temp_file" > "$changelog"
-          rm "$temp_file"
+          {
+            echo "## v${{ env.VERSION }} - $(date +%Y-%m-%d)"
+            echo "$commits"
+            echo ""
+            cat CHANGELOG.md
+          } > CHANGELOG.md.new
+          mv CHANGELOG.md.new CHANGELOG.md
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git pull
           git add CHANGELOG.md
-          git commit -m "Updated CHANGELOG.md"
-          git push --force origin main
-      - name: Create Issue
-        env:
-          BODY: |
-            Release from ${{ github.triggering_actor }}
+          git commit -m "chore: update changelog for v${{ env.VERSION }}"
+          git push origin HEAD:main
 
-            Commit list from previous release/fix-release tag:
-            ${{ steps.commits.outputs.commits }}
-
-            Docker image in container registry: ${{ env.IMAGE }}:${{ github.run_number }}
-        run: |
-          gh label create release-${{ github.run_number }}
-          gh issue create \
-          --title "Version ${{ github.run_number }}" \
-          --assignee "${{ github.triggering_actor }}" \
-          --label release-${{ github.run_number }} \
-          --body "${{ env.BODY }}"
+      - name: Create GitHub Issue
+        uses: peter-evans/create-issue-from-file@v5
+        with:
+          title: "Release v${{ env.VERSION }}"
+          content-file: ./release-info.md
+          labels: release
 
       - name: Generate release-info.md
         run: |
