@@ -1,0 +1,119 @@
+name: Fix Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_version:
+        description: 'Release version (e.g., 1.0.0)'
+        required: true
+      issue_number:
+        description: 'Issue number to comment on'
+        required: true
+
+jobs:
+  fix-release:
+    name: Run fix release flow
+    runs-on: ubuntu-latest
+
+    env:
+      REGISTRY: cr.yandex/<идентификатор_реестра>
+      APP_NAME: app
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # need full history for git tags
+
+      - name: Setup Docker auth (Yandex)
+        run: echo ${{ secrets.YC_DOCKER_AUTH }} | docker login -u oauth --password-stdin cr.yandex
+
+      - name: Get previous fix tag
+        id: prevtag
+        run: |
+          RELEASE="${{ github.event.inputs.release_version }}"
+          FIX_TAG_PREFIX="${RELEASE}_fix"
+
+          COUNT=$(git tag --list "${FIX_TAG_PREFIX}*" | wc -l)
+          echo "fix_count=$((COUNT + 1))" >> $GITHUB_OUTPUT
+
+          echo "Previous fix count: $COUNT"
+          echo "This will be fix #$((COUNT + 1))"
+
+      - name: Set Docker tags
+        id: tags
+        run: |
+          VERSION="${{ github.event.inputs.release_version }}"
+          FIX_NUMBER="${{ steps.prevtag.outputs.fix_count }}"
+          TAG1="${VERSION}_fix${FIX_NUMBER}"
+          TAG2="${VERSION}_latest"
+          echo "tag1=$TAG1" >> $GITHUB_OUTPUT
+          echo "tag2=$TAG2" >> $GITHUB_OUTPUT
+
+      - name: Run type checks
+        run: |
+          echo "Running type checks..."
+          # your type checker here
+          # e.g., npm run typecheck
+
+      - name: Run tests
+        run: |
+          echo "Running tests..."
+          # your test command here
+          # e.g., npm test
+
+      - name: Build Docker image
+        run: |
+          docker build -t $REGISTRY/$APP_NAME:${{ steps.tags.outputs.tag1 }} -t $REGISTRY/$APP_NAME:${{ steps.tags.outputs.tag2 }} .
+
+      - name: Push Docker images
+        run: |
+          docker push $REGISTRY/$APP_NAME:${{ steps.tags.outputs.tag1 }}
+          docker push $REGISTRY/$APP_NAME:${{ steps.tags.outputs.tag2 }}
+
+      - name: Create git tag
+        run: |
+          git config user.name "${{ github.actor }}"
+          git config user.email "${{ github.actor }}@users.noreply.github.com"
+
+          TAG="${{ github.event.inputs.release_version }}_fix${{ steps.prevtag.outputs.fix_count }}"
+          git tag $TAG
+          git push origin $TAG
+
+      - name: Get commits since last tag
+        id: commits
+        run: |
+          LAST_TAG=$(git tag --sort=-creatordate | grep "${{ github.event.inputs.release_version }}" | head -n 1)
+          echo "Last tag: $LAST_TAG"
+          git log $LAST_TAG..HEAD --oneline > commits.txt
+          echo 'commits<<EOF' >> $GITHUB_OUTPUT
+          cat commits.txt >> $GITHUB_OUTPUT
+          echo 'EOF' >> $GITHUB_OUTPUT
+
+      - name: Comment on issue
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const issue_number = Number("${{ github.event.inputs.issue_number }}");
+            const tag = "${{ github.event.inputs.release_version }}_fix${{ steps.prevtag.outputs.fix_count }}";
+            const image_url = "cr.yandex/<идентификатор_реестра>/app:" + tag;
+            const date = new Date().toISOString().split('T')[0];
+            const actor = "${{ github.actor }}";
+            const commits = `\`\`\`\n${{ steps.commits.outputs.commits }}\n\`\`\``;
+
+            const body = `
+**📦 Фикс к релизу \`${tag}\`**
+- 📅 Дата фикса: ${date}
+- 👤 Автор: @${actor}
+- 📄 Коммиты с прошлого фикса:
+${commits}
+- 🔗 Docker образ: \`${image_url}\`
+            `;
+
+            await github.rest.issues.createComment({
+              issue_number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body,
+            });
