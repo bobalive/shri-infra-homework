@@ -1,3 +1,6 @@
+## v16 - 2025-07-14
+- chore: update changelog for v15
+
 ## v15 - 2025-07-14
 - chore: update changelog for v12
 
